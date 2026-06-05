@@ -113,6 +113,6 @@
   }
 </script>
 
-<div class="relative w-full h-full bg-white">
+<div class="absolute inset-0 bg-white">
   <canvas bind:this={chartCanvas}></canvas>
 </div>
