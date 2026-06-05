@@ -6,7 +6,7 @@
   let { currentPage, onNavigate }: Props = $props();
 </script>
 
-<header class="px-6 py-4 border-b-2 border-black flex items-center justify-between gap-8 shrink-0">
+<header class="px-4 md:px-6 py-4 border-b-2 border-black flex flex-wrap items-center justify-between gap-4 md:gap-8 shrink-0">
   <button 
     onclick={() => onNavigate('dashboard')}
     class="flex flex-col items-start text-left cursor-pointer border-none bg-transparent p-0"
