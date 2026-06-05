@@ -6,7 +6,7 @@ WORKDIR /app
 COPY Project.toml Manifest.toml ./
 
 # Install dependencies
-RUN julia -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+RUN julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
 
 # Copy source code
 COPY . .
