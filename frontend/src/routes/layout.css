@@ -1,0 +1,51 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/* Brutalist Range Slider Styling */
+input[type='range'] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+  height: 24px;
+}
+
+input[type='range']:focus {
+  outline: none;
+}
+
+/* Track */
+input[type='range']::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 2px;
+  background: black;
+  border: none;
+}
+
+input[type='range']::-moz-range-track {
+  width: 100%;
+  height: 2px;
+  background: black;
+  border: none;
+}
+
+/* Thumb */
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  background: black;
+  border: 2px solid black;
+  margin-top: -7px; /* Centers thumb on track */
+  border-radius: 0; /* Square brutalist look */
+}
+
+input[type='range']::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  background: black;
+  border: 2px solid black;
+  border-radius: 0;
+  cursor: pointer;
+}
