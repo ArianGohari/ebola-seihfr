@@ -1,11 +1,11 @@
 <script lang="ts">
 	const legend = [
-		{ sym: 'S', color: '#2563eb', name: 'Susceptible', desc: 'HEALTHY' },
-		{ sym: 'E', color: '#ca8a04', name: 'Exposed', desc: 'INCUBATING' },
-		{ sym: 'I', color: '#dc2626', name: 'Infectious', desc: 'SYMPTOMATIC' },
-		{ sym: 'H', color: '#ea580c', name: 'Hospitalized', desc: 'ISOLATED' },
-		{ sym: 'F', color: '#9333ea', name: 'Funeral', desc: 'DECEASED' },
-		{ sym: 'R', color: '#16a34a', name: 'Removed', desc: 'BURIED' }
+		{ sym: 'S', color: '#2563eb', name: 'Susceptible', desc: 'HEALTHY, NOT IMMUNIZED' },
+		{ sym: 'E', color: '#ca8a04', name: 'Exposed', desc: 'INCUBATING, ASYMPTOMATIC' },
+		{ sym: 'I', color: '#dc2626', name: 'Infectious', desc: 'SYMPTOMATIC, INFECTIOUS' },
+		{ sym: 'H', color: '#ea580c', name: 'Hospitalized', desc: 'ISOLATED, STILL INFECTIOUS' },
+		{ sym: 'F', color: '#9333ea', name: 'Funeral', desc: 'DECEASED, STILL INFECTIOUS' },
+		{ sym: 'R', color: '#16a34a', name: 'Removed', desc: 'BURIED OR RECOVERED' }
 	];
 </script>
 

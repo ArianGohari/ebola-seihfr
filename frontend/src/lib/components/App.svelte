@@ -146,7 +146,7 @@
             </label>
           </div>
 
-          <div class="border-2 border-black p-4 flex-1 min-h-[350px] md:min-h-[450px] lg:min-h-0 bg-white relative overflow-hidden">
+          <div class="border-2 border-black flex-1 min-h-[350px] md:min-h-[450px] lg:min-h-0 relative overflow-hidden">
             <Chart data={simulationData} bind:this={chartRef} />
           </div>
 
