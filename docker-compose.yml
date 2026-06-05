@@ -19,10 +19,13 @@ services:
       - "3000:3000"
     networks:
       - ebola
+      - proxy-network
     depends_on:
       - backend
     restart: unless-stopped
 
 networks:
   ebola:
+    external: true
+  proxy-network:
     external: true
