@@ -1,0 +1,5 @@
+Manifest.toml
+.git
+.DS_Store
+*.jl.cov
+*.jl.mem
