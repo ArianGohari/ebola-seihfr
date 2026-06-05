@@ -5,7 +5,7 @@ const H = 4  # hospitalized, isolated
 const F = 5  # deceased, infectious during funeral/burial
 const R = 6  # recovered or safely buried
 
-const N = 3_000_000.0 # Ituri Province population
+const N = 7_000_000.0 # Ituri Province population (IOM 2025)
 
 # transmission rates (Bundibugyo 2026)
 βI, βH, βF = 0.38, 0.15, 0.30

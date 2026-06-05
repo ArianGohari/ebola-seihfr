@@ -6,31 +6,32 @@ using Genie, Genie.Router, Genie.Renderer.Json, Genie.Requests
 include("seihfr.jl")
 include("ode.jl")
 
-# Simulation parameters updated to June 5, 2026 scientific baseline
+# Simulation parameters strictly updated to June 5, 2026 scientific baseline
 Base.@kwdef struct SimParams
     solver::String = "rk4"
     days::Float64 = 360.0
     dt::Float64 = 0.1
     
-    # Initial State (Snapshot June 5, 2026)
-    e0::Float64 = 280.0
+    # Initial State (Accurate Snapshot June 5, 2026)
+    # Based on WHO report (396 confirmed) + conservative 1.5x detection gap (~600 burden)
+    e0::Float64 = 225.0
     i0::Float64 = 140.0
     h0::Float64 = 60.0
     r0::Float64 = 110.0
     d0::Float64 = 65.0
     
-    # Transmission Rates (Updated BDBV 2026)
-    beta_i::Float64 = 0.35
-    beta_h::Float64 = 0.12
-    beta_f::Float64 = 0.35
+    # Transmission Rates (BDBV Scientific Baseline, R0 ~ 1.44)
+    beta_i::Float64 = 0.38
+    beta_h::Float64 = 0.15
+    beta_f::Float64 = 0.30
     
     # Biological & response parameters
-    incubation_days::Float64 = 8.4
-    hosp_days::Float64 = 4.2
+    incubation_days::Float64 = 9.0
+    hosp_days::Float64 = 5.0
     gamma_f::Float64 = 0.045
     gamma_r::Float64 = 0.105
     gamma_hr::Float64 = 0.32
-    gamma_hd::Float64 = 0.08
+    gamma_hd::Float64 = 0.05 # Reduced mortality reflecting modern supportive care
     funeral_days::Float64 = 2.0
 end
 

@@ -19,6 +19,12 @@
     </div>
   </div>
   <div class="bg-white p-4 border-r-2 border-b-2 border-black">
+    <div class="text-[10px] font-black uppercase tracking-widest mb-1 text-black opacity-50">Total Deaths</div>
+    <div class="text-3xl font-black tabular-nums text-purple-700 leading-none">
+      {stats ? fmt(stats.total_deaths) : '–'}
+    </div>
+  </div>
+  <div class="bg-white p-4 border-r-2 border-b-2 border-black">
     <div class="text-[10px] font-black uppercase tracking-widest mb-1 text-black opacity-50">Peak Infectious</div>
     <div class="text-3xl font-black tabular-nums text-red-600 leading-none">
       {stats ? fmt(stats.peak_I) : '–'}
@@ -28,12 +34,6 @@
     <div class="text-[10px] font-black uppercase tracking-widest mb-1 text-black opacity-50">Fatality Rate</div>
     <div class="text-3xl font-black tabular-nums text-purple-700 leading-none">
       {stats ? stats.cfr.toFixed(1) + '%' : '–'}
-    </div>
-  </div>
-  <div class="bg-white p-4 border-r-2 border-b-2 border-black">
-    <div class="text-[10px] font-black uppercase tracking-widest mb-1 text-black opacity-50">Total Deaths</div>
-    <div class="text-3xl font-black tabular-nums text-purple-700 leading-none">
-      {stats ? fmt(stats.total_deaths) : '–'}
     </div>
   </div>
 </div>

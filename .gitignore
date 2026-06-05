@@ -9,7 +9,6 @@ frontend/.output/
 !.env.example
 
 # Julia
-backend/Manifest.toml
 **/*.jl.cov
 **/*.jl.mem
 

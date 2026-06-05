@@ -11,20 +11,20 @@
 
   let params = $state<SimulationParams>({
     days: 360,
-    e0: 280,
+    e0: 225,
     i0: 140,
     h0: 60,
     r0: 110,
     d0: 65,
-    beta_i: 0.35,
-    beta_h: 0.12,
-    beta_f: 0.35,
-    incubation_days: 8.4,
-    hosp_days: 4.2,
+    beta_i: 0.38,
+    beta_h: 0.15,
+    beta_f: 0.30,
+    incubation_days: 9.0,
+    hosp_days: 5.0,
     gamma_f: 0.045,
     gamma_r: 0.105,
     gamma_hr: 0.32,
-    gamma_hd: 0.08,
+    gamma_hd: 0.05,
   });
 
   let simulationData = $state<SimulationData | null>(null);
@@ -35,20 +35,20 @@
 
   const DEFAULT_PARAMS: SimulationParams = {
     days: 360,
-    e0: 280,
+    e0: 225,
     i0: 140,
     h0: 60,
     r0: 110,
     d0: 65,
-    beta_i: 0.35,
-    beta_h: 0.12,
-    beta_f: 0.35,
-    incubation_days: 8.4,
-    hosp_days: 4.2,
+    beta_i: 0.38,
+    beta_h: 0.15,
+    beta_f: 0.30,
+    incubation_days: 9.0,
+    hosp_days: 5.0,
     gamma_f: 0.045,
     gamma_r: 0.105,
     gamma_hr: 0.32,
-    gamma_hd: 0.08,
+    gamma_hd: 0.05,
   };
 
   function resetParams() {
