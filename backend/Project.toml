@@ -1,3 +1,8 @@
+name = "ebola-seihfr"
+uuid = "02850749-a083-4e55-ae71-2b80090dbd98"
+authors = ["Arian <ariangohari1@gmail.com>"]
+version = "0.1.0"
+
 [deps]
 Genie = "c43c736e-a2d1-11e8-161f-af95117fbd1e"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"

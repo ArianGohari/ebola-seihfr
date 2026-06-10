@@ -1,26 +1,30 @@
 module App
 
 using Genie, Genie.Router, Genie.Renderer.Json, Genie.Requests
+using StaticArrays
 
-# Include original models
+# Include models
 include("seihfr.jl")
 include("ode.jl")
 
-# Simulation parameters strictly updated to June 5, 2026 scientific baseline
+"""
+    SimParams
+
+Simulation parameters with default values based on the June 2026 baseline.
+"""
 Base.@kwdef struct SimParams
     solver::String = "rk4"
     days::Float64 = 360.0
     dt::Float64 = 0.1
     
-    # Initial State (Accurate Snapshot June 5, 2026)
-    # Based on WHO report (396 confirmed) + conservative 1.5x detection gap (~600 burden)
+    # Initial State
     e0::Float64 = 225.0
     i0::Float64 = 140.0
     h0::Float64 = 60.0
     r0::Float64 = 110.0
     d0::Float64 = 65.0
     
-    # Transmission Rates (BDBV Scientific Baseline, R0 ~ 1.44)
+    # Transmission Rates
     beta_i::Float64 = 0.38
     beta_h::Float64 = 0.15
     beta_f::Float64 = 0.30
@@ -31,59 +35,87 @@ Base.@kwdef struct SimParams
     gamma_f::Float64 = 0.045
     gamma_r::Float64 = 0.105
     gamma_hr::Float64 = 0.32
-    gamma_hd::Float64 = 0.05 # Reduced mortality reflecting modern supportive care
+    gamma_hd::Float64 = 0.05
     funeral_days::Float64 = 2.0
 end
 
+"""
+    run_simulation(p::SimParams)
+
+Runs the SEIHFR simulation using the provided parameters. 
+Uses `StaticArrays` for high-performance integration.
+"""
 function run_simulation(p::SimParams)
-    # Per-call rate set passed explicitly into odes(); no global mutation,
-    # so concurrent requests can't clobber each other's parameters.
-    rates = (
-        βI = p.beta_i, βH = p.beta_h, βF = p.beta_f,
-        σ = 1.0 / p.incubation_days,
-        γH = 1.0 / p.hosp_days,
-        γF = p.gamma_f, γR = p.gamma_r, γHR = p.gamma_hr, γHD = p.gamma_hd,
-        γFR = 1.0 / p.funeral_days,
-    )
+    # Store rates in a way that ensures type stability for the closure
+    βI, βH, βF = p.beta_i, p.beta_h, p.beta_f
+    σ = 1.0 / p.incubation_days
+    γH = 1.0 / p.hosp_days
+    γF, γR, γHR, γHD = p.gamma_f, p.gamma_r, p.gamma_hr, p.gamma_hd
+    γFR = 1.0 / p.funeral_days
+    
+    rates = (βI=βI, βH=βH, βF=βF, σ=σ, γH=γH, γF=γF, γR=γR, γHR=γHR, γHD=γHD, γFR=γFR)
 
-    # Initial state (6 compartments: S, E, I, H, F, R)
-    # We add d0 (cumulative deaths) tracking as a 7th value
-    m0 = [N - (p.e0+p.i0+p.h0+p.r0+p.d0), p.e0, p.i0, p.h0, 0.0, p.r0, p.d0]
+    # Initial state (S, E, I, H, F, R, cumulative_deaths)
+    s0 = N - (p.e0 + p.i0 + p.h0 + p.r0 + p.d0)
+    m0 = @SVector [s0, p.e0, p.i0, p.h0, 0.0, p.r0, p.d0]
 
+    # Wrapper to include cumulative death tracking
+    # Using a fast closure with captured local variables
     function wrapped_odes(m)
-        dm = odes(m[1:6], rates)
-        # Track cumulative deaths: flux into death from I and H
-        d_deaths = death_I(m[1:6], rates) + death_H(m[1:6], rates)
-        return [dm..., d_deaths]
+        m_core = SVector(m[1], m[2], m[3], m[4], m[5], m[6])
+        dm = odes(m_core, rates)
+        d_deaths = death_I(m_core, rates) + death_H(m_core, rates)
+        return @SVector [dm[1], dm[2], dm[3], dm[4], dm[5], dm[6], d_deaths]
     end
 
-    solver = p.solver == "euler" ? euler : runge_kutta_4
-    result = solver(wrapped_odes, m0, p.days, p.dt)
+    solver_func = p.solver == "euler" ? euler : runge_kutta_4
+    result = solver_func(wrapped_odes, m0, p.days, p.dt)
 
-    idx = 1:max(1, div(length(result), 1000)):length(result)
+    # Single-pass result processing: Downsample and extract series simultaneously
+    n = length(result)
+    step = max(1, div(n, 1000))
+    idx = 1:step:n
+    
+    # Pre-allocate series vectors
+    m_out = length(idx)
+    times = Vector{Float64}(undef, m_out)
+    S_v = Vector{Float64}(undef, m_out)
+    E_v = Vector{Float64}(undef, m_out)
+    I_v = Vector{Float64}(undef, m_out)
+    H_v = Vector{Float64}(undef, m_out)
+    F_v = Vector{Float64}(undef, m_out)
+    R_v = Vector{Float64}(undef, m_out)
+    
+    peak_I = 0.0
+    for (j, i) in enumerate(idx)
+        r = result[i]
+        times[j] = i * p.dt
+        S_v[j] = r[1]
+        E_v[j] = r[2]
+        I_v[j] = r[3]
+        H_v[j] = r[4]
+        F_v[j] = r[5]
+        R_v[j] = r[6]
+        (r[3] > peak_I) && (peak_I = r[3])
+    end
     
     last_r = result[end]
-    # Statistics relative to the simulation start.
-    # total_infected = everyone who has ever entered the E compartment:
-    #   (m0[S] - last_r[S]) is the new infections during the run, and the
-    #   initial burden (e0 included — those people were already past S) is
-    #   added on top so the baseline isn't undercounted.
-    total_observed_cases = (m0[S] - last_r[S]) + (p.e0 + p.i0 + p.h0 + p.r0 + p.d0)
+    total_observed_cases = (m0[1] - last_r[1]) + (p.e0 + p.i0 + p.h0 + p.r0 + p.d0)
     total_deaths = last_r[7]
     
     return Dict(
-        "times" => [i * p.dt for i in idx],
-        "S" => [r[S] for r in result[idx]],
-        "E" => [r[E] for r in result[idx]],
-        "I" => [r[I] for r in result[idx]],
-        "H" => [r[H] for r in result[idx]],
-        "F" => [r[F] for r in result[idx]],
-        "R" => [r[R] for r in result[idx]],
+        "times" => times,
+        "S" => S_v,
+        "E" => E_v,
+        "I" => I_v,
+        "H" => H_v,
+        "F" => F_v,
+        "R" => R_v,
         "stats" => Dict(
             "total_infected" => total_observed_cases,
             "total_deaths" => total_deaths,
             "cfr" => total_observed_cases > 0 ? (total_deaths / total_observed_cases * 100.0) : 0.0,
-            "peak_I" => maximum([r[I] for r in result])
+            "peak_I" => peak_I
         )
     )
 end
@@ -93,14 +125,12 @@ end
 route("/simulate", method = POST) do
     data = postpayload()
     
-    # Helper for parsing payload (handles both string and symbol keys)
+    # Helper for parsing payload
     val(k, default) = begin
         v = get(data, k, get(data, string(k), nothing))
         v === nothing ? default : (v isa Number ? Float64(v) : parse(Float64, string(v)))
     end
 
-    # Defaults mirror the SimParams struct so a missing field behaves the
-    # same whether it's filled here or by the struct's own default.
     d = SimParams()
     p = SimParams(
         solver          = haskey(data, :solver) ? string(data[:solver]) : (haskey(data, "solver") ? string(data["solver"]) : d.solver),
@@ -126,13 +156,25 @@ route("/simulate", method = POST) do
     run_simulation(p) |> json
 end
 
-# Startup
-Genie.config.run_as_server = true
-Genie.config.cors_allowed_origins = ["*"]
+"""
+    startup()
 
-# Pre-compile
-run_simulation(SimParams(days=1.0))
+Configures and starts the Genie server.
+"""
+function startup()
+    Genie.config.run_as_server = true
+    Genie.config.cors_allowed_origins = ["*"]
+    
+    # Pre-compile for "snappy" first request
+    @info "Pre-compiling simulation..."
+    run_simulation(SimParams(days=1.0))
+    
+    up(8000, "0.0.0.0")
+end
 
-up(8000, "0.0.0.0")
+end # module
 
+# Only start if this file is run directly
+if abspath(PROGRAM_FILE) == @__FILE__
+    App.startup()
 end

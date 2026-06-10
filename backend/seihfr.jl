@@ -1,22 +1,22 @@
-const S = 1  # healthy, can contract disease
-const E = 2  # infected, not yet infectious (incubation)
-const I = 3  # infectious, symptomatic
-const H = 4  # hospitalized, isolated
-const F = 5  # deceased, infectious during funeral/burial
-const R = 6  # recovered or safely buried
+using StaticArrays
 
-const N = 7_000_000.0 # Ituri Province population (IOM 2025)
+# State indices
+const S = 1  # Susceptible
+const E = 2  # Exposed (incubation)
+const I = 3  # Infectious
+const H = 4  # Hospitalized
+const F = 5  # Funeral (deceased infectious)
+const R = 6  # Recovered/Safely buried
 
-# Model parameters are passed in explicitly (no globals) so concurrent
-# simulations cannot clobber each other's rates. `p` is a NamedTuple with:
-#   βI, βH, βF  transmission rates
-#   σ           incubation rate (1/incubation_days)
-#   γH          hospitalization rate (1/hosp_days)
-#   γF, γR      death/recovery rates without hospital
-#   γHR, γHD    recovery/death rates in hospital
-#   γFR         burial rate (1/funeral_days)
+const N = 7_000_000.0 # Ituri Province population
 
+"""
+    infection(m, p)
+
+Calculate the transmission flux based on infectious categories (I, H, F).
+"""
 infection(m, p) = (p.βI*m[I] + p.βH*m[H] + p.βF*m[F]) / N * m[S]
+
 incubation(m, p) = p.σ * m[E]
 hospitalization(m, p) = p.γH * m[I]
 death_I(m, p) = p.γF * m[I]
@@ -25,12 +25,27 @@ recovery_H(m, p) = p.γHR * m[H]
 death_H(m, p) = p.γHD * m[H]
 burial(m, p) = p.γFR * m[F]
 
+"""
+    odes(m, p)
+
+The SEIHFR model differential equations. Returns an `SVector` for zero-allocation performance.
+"""
 function odes(m, p)
-    dS = -infection(m, p)
-    dE = infection(m, p) - incubation(m, p)
-    dI = incubation(m, p) - hospitalization(m, p) - death_I(m, p) - recovery_I(m, p)
-    dH = hospitalization(m, p) - death_H(m, p) - recovery_H(m, p)
-    dF = death_I(m, p) + death_H(m, p) - burial(m, p)
-    dR = burial(m, p) + recovery_I(m, p) + recovery_H(m, p)
-    return [dS, dE, dI, dH, dF, dR]
+    inf = infection(m, p)
+    inc = incubation(m, p)
+    hosp = hospitalization(m, p)
+    di = death_I(m, p)
+    ri = recovery_I(m, p)
+    rh = recovery_H(m, p)
+    dh = death_H(m, p)
+    bur = burial(m, p)
+
+    dS = -inf
+    dE = inf - inc
+    dI = inc - hosp - di - ri
+    dH = hosp - dh - rh
+    dF = di + dh - bur
+    dR = bur + ri + rh
+    
+    return @SVector [dS, dE, dI, dH, dF, dR]
 end
