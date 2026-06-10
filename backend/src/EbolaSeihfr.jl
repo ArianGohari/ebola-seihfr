@@ -1,4 +1,4 @@
-module App
+module EbolaSeihfr
 
 using Genie, Genie.Router, Genie.Renderer.Json, Genie.Requests
 using StaticArrays
@@ -169,5 +169,5 @@ end # module
 
 # Only start if this file is run directly
 if abspath(PROGRAM_FILE) == @__FILE__
-    App.startup()
+    EbolaSeihfr.startup()
 end
