@@ -1,19 +1,19 @@
 function euler(odes, m0, t_end, dt)
     m = copy(m0)
-    ret = []
+    ret = Vector{typeof(m)}()
 
     for _ in dt:dt:t_end
         m = m + dt * odes(m)
         push!(ret, copy(m))
     end
-    
-    return ret 
+
+    return ret
 end
 
 
 function runge_kutta_4(odes, m0, t_end, dt)
     m = copy(m0)
-    ret = []
+    ret = Vector{typeof(m)}()
 
     for _ in dt:dt:t_end
         k1 = odes(m)
@@ -25,5 +25,4 @@ function runge_kutta_4(odes, m0, t_end, dt)
     end
 
     return ret
-    
 end

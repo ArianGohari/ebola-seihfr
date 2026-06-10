@@ -36,21 +36,24 @@ Base.@kwdef struct SimParams
 end
 
 function run_simulation(p::SimParams)
-    # Update globals in seihfr.jl for odes(m) consistency
-    global βI, βH, βF = p.beta_i, p.beta_h, p.beta_f
-    global σ = 1.0 / p.incubation_days
-    global γH = 1.0 / p.hosp_days
-    global γF, γR, γHR, γHD = p.gamma_f, p.gamma_r, p.gamma_hr, p.gamma_hd
-    global γFR = 1.0 / p.funeral_days
+    # Per-call rate set passed explicitly into odes(); no global mutation,
+    # so concurrent requests can't clobber each other's parameters.
+    rates = (
+        βI = p.beta_i, βH = p.beta_h, βF = p.beta_f,
+        σ = 1.0 / p.incubation_days,
+        γH = 1.0 / p.hosp_days,
+        γF = p.gamma_f, γR = p.gamma_r, γHR = p.gamma_hr, γHD = p.gamma_hd,
+        γFR = 1.0 / p.funeral_days,
+    )
 
     # Initial state (6 compartments: S, E, I, H, F, R)
     # We add d0 (cumulative deaths) tracking as a 7th value
     m0 = [N - (p.e0+p.i0+p.h0+p.r0+p.d0), p.e0, p.i0, p.h0, 0.0, p.r0, p.d0]
 
     function wrapped_odes(m)
-        dm = odes(m[1:6])
+        dm = odes(m[1:6], rates)
         # Track cumulative deaths: flux into death from I and H
-        d_deaths = death_I(m[1:6]) + death_H(m[1:6])
+        d_deaths = death_I(m[1:6], rates) + death_H(m[1:6], rates)
         return [dm..., d_deaths]
     end
 
@@ -60,10 +63,12 @@ function run_simulation(p::SimParams)
     idx = 1:max(1, div(length(result), 1000)):length(result)
     
     last_r = result[end]
-    # Statistics relative to the simulation start
-    # total_infected includes everyone who has ever entered the E compartment
-    # In this model, initial S - current S represents total new + existing cases
-    total_observed_cases = (m0[S] - last_r[S]) + (p.i0 + p.h0 + p.r0 + p.d0)
+    # Statistics relative to the simulation start.
+    # total_infected = everyone who has ever entered the E compartment:
+    #   (m0[S] - last_r[S]) is the new infections during the run, and the
+    #   initial burden (e0 included — those people were already past S) is
+    #   added on top so the baseline isn't undercounted.
+    total_observed_cases = (m0[S] - last_r[S]) + (p.e0 + p.i0 + p.h0 + p.r0 + p.d0)
     total_deaths = last_r[7]
     
     return Dict(
@@ -94,22 +99,28 @@ route("/simulate", method = POST) do
         v === nothing ? default : (v isa Number ? Float64(v) : parse(Float64, string(v)))
     end
 
+    # Defaults mirror the SimParams struct so a missing field behaves the
+    # same whether it's filled here or by the struct's own default.
+    d = SimParams()
     p = SimParams(
-        solver          = haskey(data, :solver) ? string(data[:solver]) : (haskey(data, "solver") ? string(data["solver"]) : "rk4"),
-        days            = val(:days, 360.0),
-        dt              = val(:dt, 0.1),
-        e0              = val(:e0, 180.0),
-        i0              = val(:i0, 80.0),
-        beta_i          = val(:beta_i, 0.35),
-        beta_h          = val(:beta_h, 0.14),
-        beta_f          = val(:beta_f, 0.33),
-        incubation_days = val(:incubation_days, 6.3),
-        hosp_days       = val(:hosp_days, 4.5),
-        gamma_f         = val(:gamma_f, 0.05),
-        gamma_r         = val(:gamma_r, 0.10),
-        gamma_hr        = val(:gamma_hr, 0.28),
-        gamma_hd        = val(:gamma_hd, 0.07),
-        funeral_days    = val(:funeral_days, 2.0)
+        solver          = haskey(data, :solver) ? string(data[:solver]) : (haskey(data, "solver") ? string(data["solver"]) : d.solver),
+        days            = val(:days, d.days),
+        dt              = val(:dt, d.dt),
+        e0              = val(:e0, d.e0),
+        i0              = val(:i0, d.i0),
+        h0              = val(:h0, d.h0),
+        r0              = val(:r0, d.r0),
+        d0              = val(:d0, d.d0),
+        beta_i          = val(:beta_i, d.beta_i),
+        beta_h          = val(:beta_h, d.beta_h),
+        beta_f          = val(:beta_f, d.beta_f),
+        incubation_days = val(:incubation_days, d.incubation_days),
+        hosp_days       = val(:hosp_days, d.hosp_days),
+        gamma_f         = val(:gamma_f, d.gamma_f),
+        gamma_r         = val(:gamma_r, d.gamma_r),
+        gamma_hr        = val(:gamma_hr, d.gamma_hr),
+        gamma_hd        = val(:gamma_hd, d.gamma_hd),
+        funeral_days    = val(:funeral_days, d.funeral_days)
     )
     
     run_simulation(p) |> json

@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, isHttpError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 // In Docker, the backend is available at http://backend:8000
@@ -31,6 +31,8 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			}
 		});
 	} catch (e: any) {
+		// Preserve the backend's status code instead of masking it as 500.
+		if (isHttpError(e)) throw e;
 		console.error('Proxy error:', e);
 		throw error(500, e.message || 'Internal Server Error');
 	}
