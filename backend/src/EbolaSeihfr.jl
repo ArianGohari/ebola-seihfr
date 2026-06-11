@@ -70,7 +70,7 @@ function run_simulation(p::SimParams)
     # Performance Win: Integrated downsampling reduces memory allocations by 1000x+
     result = solver_func(wrapped_odes, m0, p.days, p.dt; max_points=1000)
 
-    # Post-processing the now-smaller result set
+    # Post-processing the result set (which now always includes t=0)
     n_out = length(result)
     times = Vector{Float64}(undef, n_out)
     S_v = Vector{Float64}(undef, n_out)
@@ -81,13 +81,14 @@ function run_simulation(p::SimParams)
     R_v = Vector{Float64}(undef, n_out)
     
     peak_I = 0.0
-    # Use floor(n_steps/max_points)*dt as the time increment for saved points
     n_steps = Int(floor(p.days / p.dt))
-    save_step_val = max(1, div(n_steps, 1000)) * p.dt
+    save_every = max(1, div(n_steps, 1000))
 
     for j in 1:n_out
         r = result[j]
-        times[j] = j * save_step_val
+        # j=1 is t=0. Subsequent j are save_every * dt apart.
+        # The last j might be exactly t_end.
+        times[j] = min(p.days, (j-1) * save_every * p.dt)
         S_v[j] = r[1]
         E_v[j] = r[2]
         I_v[j] = r[3]

@@ -1,25 +1,29 @@
 """
     euler(odes, m0, t_end, dt, max_points=1000)
 
-Simple Euler integration with integrated downsampling to save memory.
+Simple Euler integration with integrated downsampling.
 """
 function euler(odes, m0, t_end, dt; max_points=1000)
     m = m0
     n_steps = Int(floor(t_end / dt))
+    save_every = max(1, div(n_steps, max_points))
     
-    # We only save approximately max_points
-    save_step = max(1, div(n_steps, max_points))
-    n_saved = Int(ceil(n_steps / save_step))
+    # Pre-allocate slightly more to be safe, then trim
+    ret = Vector{typeof(m0)}()
+    sizehint!(ret, max_points + 2)
     
-    ret = Vector{typeof(m0)}(undef, n_saved)
-    save_idx = 1
-    
+    push!(ret, m) # Always include t=0
+
     @fastmath @inbounds for i in 1:n_steps
         m = m + dt * odes(m)
-        if i % save_step == 0 && save_idx <= n_saved
-            ret[save_idx] = m
-            save_idx += 1
+        if i % save_every == 0
+            push!(ret, m)
         end
+    end
+    
+    # Ensure final state is always captured
+    if n_steps % save_every != 0
+        push!(ret, m)
     end
 
     return ret
@@ -33,12 +37,12 @@ Fourth-order Runge-Kutta with integrated downsampling.
 function runge_kutta_4(odes, m0, t_end, dt; max_points=1000)
     m = m0
     n_steps = Int(floor(t_end / dt))
+    save_every = max(1, div(n_steps, max_points))
     
-    save_step = max(1, div(n_steps, max_points))
-    n_saved = Int(ceil(n_steps / save_step))
+    ret = Vector{typeof(m0)}()
+    sizehint!(ret, max_points + 2)
     
-    ret = Vector{typeof(m0)}(undef, n_saved)
-    save_idx = 1
+    push!(ret, m) # Always include t=0
 
     @fastmath @inbounds for i in 1:n_steps
         k1 = odes(m)
@@ -47,10 +51,14 @@ function runge_kutta_4(odes, m0, t_end, dt; max_points=1000)
         k4 = odes(m + dt * k3)
         m = m + dt/6 * (k1 + 2*k2 + 2*k3 + k4)
         
-        if i % save_step == 0 && save_idx <= n_saved
-            ret[save_idx] = m
-            save_idx += 1
+        if i % save_every == 0
+            push!(ret, m)
         end
+    end
+    
+    # Ensure final state is always captured
+    if n_steps % save_every != 0
+        push!(ret, m)
     end
 
     return ret
